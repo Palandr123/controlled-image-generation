@@ -7,7 +7,7 @@ import numpy as np
 from utils import create_mlp
 
 
-class NonManipulator(nn.Module):
+class NonlinearManipulator(nn.Module):
     """
     Class for non-linear manipulations in the latent space of GANs
     :param self.k - amount of transformation
