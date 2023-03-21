@@ -63,7 +63,7 @@ class Trainer:
         self.val_acc_metric = LossMetric()
         self.val_loss_metric = LossMetric()
 
-        self.best_loss = -1
+        self.best_loss = None
 
     def train(self) -> None:
         """
@@ -81,6 +81,32 @@ class Trainer:
 
             self._train_loop(epoch, num_iters)
             self._val_loop(epoch, self.eval_iters)
+
+            epoch_str = f"Epoch {epoch} "
+            epoch_str += f"| Training accuracy: {self.train_acc_metric.compute():.3f} "
+            epoch_str += f"| Training loss: {self.train_loss_metric.compute():.3f} "
+            epoch_str += f"| Validation acc: {self.val_acc_metric.compute():.3f} "
+            epoch_str += f"| Validation loss: {self.val_loss_metric.compute():.3f} "
+            self.logger.info(epoch_str)
+
+            if self.writer is not None:
+                self.writer.add_scalar("Loss/train", self.train_loss_metric.compute(), epoch)
+                self.writer.add_scalar("Acc/train", self.train_acc_metric.compute(), epoch)
+                self.writer.add_scalar("Loss/val", self.val_loss_metric.compute(), epoch)
+                self.writer.add_scalar("Acc/val", self.val_acc_metric.compute(), epoch)
+
+            if self.save_path is not None:
+                self._save_model(os.path.join(self.save_path, "last.pt"), iteration)
+
+            val_loss = self.val_loss_metric.compute()
+            if self.best_loss is None or val_loss < self.best_loss:
+                self.best_loss = val_loss
+                self._save_model(os.path.join(self.save_path, "best.pt"), iteration)
+
+            self.train_loss_metric.reset()
+            self.train_acc_metric.reset()
+            self.val_loss_metric.reset()
+            self.val_acc_metric.reset()
 
             iteration += num_iters
             epoch += 1
@@ -180,3 +206,20 @@ class Trainer:
         if self.scheduler:
             self.scheduler.load_state_dict(checkpoint["scheduler"])
         self.logger.info(f"Successfully loaded the checkpoint, resuming from iteration {self.start_iteration}")
+
+    def _save_model(self, path: str, iteration: int) -> None:
+        """
+        Save the checkpoint
+        :param path: path to save the checkpoint
+        :param iteration: iteration number
+        :return: None
+        """
+        obj = {
+            "iteration": iteration + 1,
+            "optimizer": self.optimizer.state_dict(),
+            "model": self.manipulator.state_dict(),
+            "projector": self.embedder.state_dict(),
+            "scheduler": self.scheduler.state_dict()
+            if self.scheduler is not None else None,
+        }
+        torch.save(obj, path)
