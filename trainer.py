@@ -1,6 +1,5 @@
-from typing import Optional, Union
+from typing import Optional
 import logging
-import time
 import os
 
 import tqdm
@@ -33,7 +32,7 @@ class Trainer:
                  embedder: nn.Module, batch_size: int, iterations: int, device: torch.device, eval_freq: int = 1000,
                  eval_iters: int = 100, scheduler: Optional[optim.lr_scheduler.LRScheduler] = None,
                  writer: Optional[SummaryWriter] = None, save_path: Optional[str] = None,
-                 checkpoint_path: Optional[str] = None, train_embedder: bool = True) -> None:
+                 checkpoint_path: Optional[str] = None) -> None:
 
         self.logger = logging.getLogger()
         self.writer = writer
@@ -46,7 +45,6 @@ class Trainer:
         self.generator = generator
         self.embedder = embedder
 
-        self.train_embedder = train_embedder
         self.eval_freq = eval_freq
         self.eval_iters = eval_iters
         self.scheduler = scheduler
@@ -111,6 +109,7 @@ class Trainer:
             iteration += num_iters
             epoch += 1
         self.logger.info("Finished training!")
+        self._save_model(os.path.join(self.save_path, "final_model.pt"), self.iterations)
 
     def _train_loop(self, epoch: int, iterations: int) -> None:
         """
