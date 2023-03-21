@@ -27,7 +27,7 @@ class NonlinearManipulator(nn.Module):
         forward method for manipulation
         :param z: batch of latent vectors, torch.tensor of shape (N, z_dim)
         :param alpha: manipulations strength
-        :return: manipulated latent vectors, torch.tensor of shape (K, N, z_dim)
+        :return: manipulated latent vectors, torch.tensor of shape (N*K, z_dim)
         """
         z = z.reshape((1, -1, self.z_dim))
         z = z.repeat((self.k, 1, 1))
