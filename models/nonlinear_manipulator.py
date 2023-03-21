@@ -44,7 +44,7 @@ class NonlinearManipulator(nn.Module):
 
         dz = torch.stack(dz)
         z = z + dz
-        return z
+        return z.reshape(-1, self.z_dim)
 
     def forward_single(self, z: torch.Tensor, k: int, alpha: Optional[float] = None) -> torch.Tensor:
         """
