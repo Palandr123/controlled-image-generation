@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 import logging
 import time
 import os
@@ -29,7 +29,7 @@ class Trainer:
     :param self.save_path - directory in which checkpoints will be saved (no saving if None)
     :param self.checkpoint_path - checkpoint path, to resume training (no loading from checkpoint if None)
     """
-    def __init__(self, manipulator: nn.Module, loss_fn: nn.Module, optimizer: optim.Optimizer, generator: nn.Module,
+    def __init__(self, manipulator: nn.Module, loss_fn: nn.Module, optimizer: optim.Optimizer, generator: GanWrapper,
                  embedder: nn.Module, batch_size: int, iterations: int, device: torch.device, eval_freq: int = 1000,
                  eval_iters: int = 100, scheduler: Optional[optim.lr_scheduler.LRScheduler] = None,
                  writer: Optional[SummaryWriter] = None, save_path: Optional[str] = None,
@@ -80,6 +80,7 @@ class Trainer:
                 num_iters = self.iterations - iteration
 
             self._train_loop(epoch, num_iters)
+            self._val_loop(epoch, self.eval_iters)
 
             iteration += num_iters
             epoch += 1
@@ -100,38 +101,69 @@ class Trainer:
         self.embedder.train()
 
         for i in range(iterations):
-            z = torch.randn([self.batch_size, self.generator.z_dim])
-            z = z.to(self.device)
-
-            self.optimizer.zero_grad()
-            z_orig = z.repeat((self.manipulator.k, 1, 1))
-            img_orig = self.generator(z_orig)
-            z_transformed = self.manipulator(z)
-
-            features = []
-            for j in range(z_transformed.shape[0] // self.batch_size):
-                z_transformed_batch = z_transformed[j * self.batch_size:(j + 1) * self.batch_size]
-                img_transformed = self.generator(z_transformed_batch)
-                feats = self.embedder(img_orig, img_transformed)
-                feats = feats / torch.reshape(torch.norm(feats, dim=1), (-1, 1))
-                features.append(feats)
-            features = torch.cat(features, dim=0)
-
-            acc, loss = self.loss_fn(features)
+            loss = self._iteration(pbar, "train")
             loss.backward()
 
             self.optimizer.step()
             self.scheduler.step()
 
-            self.train_acc_metric.update(acc.item(), z.shape[0])
-            self.train_loss_metric.update(loss.item(), z.shape[0])
+        pbar.close()
 
-            pbar.update()
-            pbar.set_postfix_str(
-                f"Accuracy: {acc.item():.3f} Loss: {loss.item():.3f}", refresh=False
-            )
+    def _val_loop(self, epoch: int, iterations: int) -> None:
+        """
+        Validation epoch
+        :param epoch: current epoch
+        :param iterations: number of iterations
+        :return: None
+        """
+        pbar = tqdm.tqdm(total=iterations, leave=False)
+        pbar.set_description(f"Epoch {epoch} | Validation")
+
+        self.manipulator.eval()
+        self.generator.eval()
+        self.embedder.eval()
+
+        for i in range(iterations):
+            with torch.no_grad():
+                self._iteration(pbar, "val")
 
         pbar.close()
+
+    def _iteration(self, pbar: tqdm.tqdm, stage: str = "train") -> torch.Tensor:
+        """
+        Iteration (either training or validation)
+        :param pbar: progress bar to log the metrics
+        :param stage: whether it is training and validation
+        :return: Loss
+        """
+        z = torch.randn([self.batch_size, self.generator.z_dim])
+        z = z.to(self.device)
+
+        img_orig = self.generator(z)
+        z_transformed = self.manipulator(z)
+
+        features = []
+        for j in range(z_transformed.shape[0] // self.batch_size):
+            z_transformed_batch = z_transformed[j * self.batch_size:(j + 1) * self.batch_size]
+            img_transformed = self.generator(z_transformed_batch)
+            feats = self.embedder(img_orig, img_transformed)
+            feats = feats / torch.reshape(torch.norm(feats, dim=1), (-1, 1))
+            features.append(feats)
+        features = torch.cat(features, dim=0)
+
+        acc, loss = self.loss_fn(features)
+        if stage == "train":
+            self.train_acc_metric.update(acc.item(), z.shape[0])
+            self.train_loss_metric.update(loss.item(), z.shape[0])
+        else:
+            self.val_acc_metric.update(acc.item(), z.shape[0])
+            self.val_loss_metric.update(loss.item(), z.shape[0])
+
+        pbar.update()
+        pbar.set_postfix_str(
+            f"Accuracy: {acc.item():.3f} Loss: {loss.item():.3f}", refresh=False
+        )
+        return loss
 
     def _load_from_checkpoint(self, checkpoint_path: str) -> None:
         """
