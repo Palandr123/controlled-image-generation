@@ -28,11 +28,11 @@ class Trainer:
     :param self.save_path - directory in which checkpoints will be saved (no saving if None)
     :param self.checkpoint_path - checkpoint path, to resume training (no loading from checkpoint if None)
     """
-    def __init__(self, manipulator: nn.Module, loss_fn: nn.Module, optimizer: optim.Optimizer, generator: GanWrapper,
-                 embedder: nn.Module, batch_size: int, iterations: int, device: torch.device, eval_freq: int = 1000,
-                 eval_iters: int = 100, scheduler: Optional[optim.lr_scheduler.LRScheduler] = None,
-                 writer: Optional[SummaryWriter] = None, save_path: Optional[str] = None,
-                 checkpoint_path: Optional[str] = None) -> None:
+    def __init__(self, manipulator: nn.Module, embedder: nn.Module, generator: GanWrapper, loss_fn: nn.Module,
+                 optimizer: optim.Optimizer, batch_size: int, iterations: int, device: torch.device,
+                 eval_freq: int = 1000, eval_iters: int = 100,
+                 scheduler: Optional[optim.lr_scheduler.LRScheduler] = None, writer: Optional[SummaryWriter] = None,
+                 save_path: Optional[str] = None, checkpoint_path: Optional[str] = None) -> None:
 
         self.logger = logging.getLogger()
         self.writer = writer
