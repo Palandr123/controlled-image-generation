@@ -26,4 +26,3 @@ class Embedder(nn.Module):
         :return: embedding for the manipulations, of the shape (N, out_features)
         """
         return self.features_extractor(torch.cat([img1, img2], dim=1)).reshape(img1.shape(0), -1)
-
