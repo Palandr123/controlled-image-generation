@@ -1,0 +1,47 @@
+defaults:
+  - _self_
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+hydra:
+  output_subdir: null
+  run:
+    dir: .
+
+device: cuda:1
+k: 20
+z_dim: 512
+eval_freq: 1000
+eval_iters: 100
+save_path: result
+checkpoint_path:
+use_tensorboard: True
+manipulator:
+  _target_: models.NonlinearManipulator
+  k: ${k}
+  z_dim: ${z_dim}
+  n_layers: 3
+  alpha_range: [-6.0, 6.0]
+embedder:
+  _target_: models.Embedder
+  n_layers: 3
+  middle_features: 256
+  out_features: 128
+loss:
+  _target_: losses.ContrastiveLoss
+  k: ${k}
+  temp: 0.5
+  reduction: mean
+generator:
+  _target_: gans.StyleGAN
+  weights_path: ffhq.pkl
+hparams:
+  batch_size: 4
+  iterations: 1000
+  optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.001
+    weight_decay: 1e-3
+  scheduler:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    milestones: [1000, 5000]
+    gamma: 0.2
