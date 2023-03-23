@@ -8,7 +8,7 @@ from gans import GanWrapper
 from trainer import Trainer
 
 
-@hydra.main(config_path="./configs", config_name="train.yaml")
+@hydra.main(version_base=None, config_path="./configs", config_name="train.yaml")
 def train(cfg: DictConfig) -> None:
     """
     Train the model
@@ -18,9 +18,9 @@ def train(cfg: DictConfig) -> None:
     device = torch.device(cfg.device if torch.cuda.is_available else "cpu")
 
     manipulator: nn.Module = hydra.utils.instantiate(cfg.manipulator, k=cfg.k).to(device)
-    loss_fn: nn.Module = hydra.utils.instantiate(cfg.loss, k=cfg.k).to(device)
-    generator: GanWrapper = hydra.utils.instantiate(cfg.generator).to(device)
     embedder: nn.Module = hydra.utils.instantiate(cfg.embedder).to(device)
+    generator: GanWrapper = hydra.utils.instantiate(cfg.generator).to(device)
+    loss_fn: nn.Module = hydra.utils.instantiate(cfg.loss, k=cfg.k).to(device)
 
     optimizer: torch.optim.Optimizer = hydra.utils.instantiate(cfg.hparams.optimizer,
                                                                list(manipulator.parameters()) +
@@ -41,3 +41,7 @@ def train(cfg: DictConfig) -> None:
                       cfg.hparams.iterations, device, cfg.eval_freq, cfg.eval_iters, scheduler, writer, save_path,
                       checkpoint_path)
     trainer.train()
+
+
+if __name__ == "__main__":
+    train()
