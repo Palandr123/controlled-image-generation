@@ -13,10 +13,10 @@ class Embedder(nn.Module):
     """
     def __init__(self, n_layers: int, middle_features: int, out_features: int) -> None:
         super().__init__()
-        self.feature_extractor = resnet18(pretrained=True)
-        self.features_extractor.conv1 = nn.Conv2d(6, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
-        in_features = self.features_extractor.layer4[1].conv2.out_channels
-        self.features_extractor.fc = create_mlp(n_layers, in_features, middle_features, out_features)
+        self.feature_extractor = resnet18(weights='IMAGENET1K_V1')
+        self.feature_extractor.conv1 = nn.Conv2d(6, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        in_features = self.feature_extractor.layer4[1].conv2.out_channels
+        self.feature_extractor.fc = create_mlp(n_layers, in_features, middle_features, out_features)
 
     def forward(self, img1: torch.Tensor, img2: torch.Tensor) -> torch.Tensor:
         """
@@ -25,4 +25,4 @@ class Embedder(nn.Module):
         :param img2: batch of images that are results of the manipulation on latent vectors corresponding to img1
         :return: embedding for the manipulations, of the shape (N, out_features)
         """
-        return self.features_extractor(torch.cat([img1, img2], dim=1)).reshape(img1.shape(0), -1)
+        return self.feature_extractor(torch.cat([img1, img2], dim=1)).reshape(img1.size(0), -1)
