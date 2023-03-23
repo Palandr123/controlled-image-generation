@@ -15,7 +15,7 @@ class NonlinearManipulator(nn.Module):
     :param self.nets - neural networks corresponding to each manipulation
     :param self.alpha_range - sampling range for manipulation strength if not given
     """
-    def __init__(self, k: int, z_dim: int, n_layers: int, alpha_range: tuple) -> None:
+    def __init__(self, k: int, z_dim: int, n_layers: int, alpha_range: tuple[float, float]) -> None:
         super().__init__()
         self.k = k
         self.z_dim = z_dim
