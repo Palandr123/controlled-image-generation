@@ -31,12 +31,13 @@ class Trainer:
     def __init__(self, manipulator: nn.Module, embedder: nn.Module, generator: GanWrapper, loss_fn: nn.Module,
                  optimizer: optim.Optimizer, batch_size: int, iterations: int, device: torch.device,
                  eval_freq: int = 1000, eval_iters: int = 100,
-                 scheduler: Optional[optim.lr_scheduler.LRScheduler] = None, writer: Optional[SummaryWriter] = None,
+                 scheduler: Optional[optim.lr_scheduler._LRScheduler] = None, writer: Optional[SummaryWriter] = None,
                  save_path: Optional[str] = None, checkpoint_path: Optional[str] = None) -> None:
 
         self.logger = logging.getLogger()
         self.writer = writer
         self.save_path = save_path
+        os.makedirs(self.save_path, exist_ok=True)
 
         self.device = device
         self.manipulator = manipulator
@@ -164,13 +165,15 @@ class Trainer:
         z = torch.randn([self.batch_size, self.generator.z_dim])
         z = z.to(self.device)
 
-        img_orig = self.generator(z)
+        with torch.no_grad():
+            img_orig = self.generator(z)
         z_transformed = self.manipulator(z)
 
         features = []
-        for j in range(z_transformed.shape[0] // self.batch_size):
+        for j in range(z_transformed.size(0) // self.batch_size):
             z_transformed_batch = z_transformed[j * self.batch_size:(j + 1) * self.batch_size]
-            img_transformed = self.generator(z_transformed_batch)
+            with torch.no_grad():
+                img_transformed = self.generator(z_transformed_batch)
             feats = self.embedder(img_orig, img_transformed)
             feats = feats / torch.reshape(torch.norm(feats, dim=1), (-1, 1))
             features.append(feats)
@@ -178,11 +181,11 @@ class Trainer:
 
         acc, loss = self.loss_fn(features)
         if stage == "train":
-            self.train_acc_metric.update(acc.item(), z.shape[0])
-            self.train_loss_metric.update(loss.item(), z.shape[0])
+            self.train_acc_metric.update(acc.item(), z.size(0))
+            self.train_loss_metric.update(loss.item(), z.size(0))
         else:
-            self.val_acc_metric.update(acc.item(), z.shape[0])
-            self.val_loss_metric.update(loss.item(), z.shape[0])
+            self.val_acc_metric.update(acc.item(), z.size(0))
+            self.val_loss_metric.update(loss.item(), z.size(0))
 
         pbar.update()
         pbar.set_postfix_str(
