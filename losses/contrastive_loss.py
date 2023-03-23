@@ -23,7 +23,7 @@ class ContrastiveLoss(nn.Module):
                          dimension correspond to the first transformation
         :return: accuracy and loss
         """
-        batch_size = features.shape(0)
+        batch_size = features.size(0)
 
         similarity_matrix = torch.mm(features, features.t().contiguous())
         similarity_matrix = torch.abs(similarity_matrix)
@@ -46,6 +46,6 @@ class ContrastiveLoss(nn.Module):
             pos = pos.mean(dim=-1)
             neg = neg.mean(dim=-1)
 
-        acc = torch.float(pos > neg).mean()
+        acc = (pos > neg).float().mean()
         loss = -torch.log(pos / neg).mean()
         return acc, loss
