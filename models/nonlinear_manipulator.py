@@ -35,7 +35,7 @@ class NonlinearManipulator(nn.Module):
         dz = []
         for i in range(self.k):
             res_dz = self.nets[i](z[i])
-            res_dz /= torch.norm(res_dz, dim=1).reshape((-1, 1))
+            res_dz = res_dz / torch.norm(res_dz, dim=1).reshape((-1, 1))
             if alpha is not None:
                 res_dz *= alpha
             else:
