@@ -82,10 +82,10 @@ class Trainer:
             self._val_loop(epoch, self.eval_iters)
 
             epoch_str = f"Epoch {epoch} "
-            epoch_str += f"| Training accuracy: {self.train_acc_metric.compute():.3f} "
-            epoch_str += f"| Training loss: {self.train_loss_metric.compute():.3f} "
-            epoch_str += f"| Validation acc: {self.val_acc_metric.compute():.3f} "
-            epoch_str += f"| Validation loss: {self.val_loss_metric.compute():.3f} "
+            epoch_str += f"| Training accuracy: {self.train_acc_metric.compute():.4f} "
+            epoch_str += f"| Training loss: {self.train_loss_metric.compute():.4f} "
+            epoch_str += f"| Validation acc: {self.val_acc_metric.compute():.4f} "
+            epoch_str += f"| Validation loss: {self.val_loss_metric.compute():.4f} "
             self.logger.info(epoch_str)
 
             if self.writer is not None:
@@ -127,11 +127,13 @@ class Trainer:
         self.embedder.train()
 
         for i in range(iterations):
+            self.optimizer.zero_grad()
             loss = self._iteration(pbar, "train")
             loss.backward()
 
             self.optimizer.step()
             self.scheduler.step()
+            torch.cuda.empty_cache()
 
         pbar.close()
 
@@ -162,18 +164,14 @@ class Trainer:
         :param stage: whether it is training and validation
         :return: Loss
         """
-        z = torch.randn([self.batch_size, self.generator.z_dim])
-        z = z.to(self.device)
-
+        z = self.generator.sample_latent(self.batch_size, self.device)
         with torch.no_grad():
-            img_orig = self.generator(z)
+            img_orig = self.generator.get_features(z)
         z_transformed = self.manipulator(z)
 
         features = []
         for j in range(z_transformed.size(0) // self.batch_size):
-            z_transformed_batch = z_transformed[j * self.batch_size:(j + 1) * self.batch_size]
-            with torch.no_grad():
-                img_transformed = self.generator(z_transformed_batch)
+            img_transformed = self.generator.get_features(z_transformed[j * self.batch_size:(j + 1) * self.batch_size])
             feats = self.embedder(img_orig, img_transformed)
             feats = feats / torch.reshape(torch.norm(feats, dim=1), (-1, 1))
             features.append(feats)
@@ -189,7 +187,7 @@ class Trainer:
 
         pbar.update()
         pbar.set_postfix_str(
-            f"Accuracy: {acc.item():.3f} Loss: {loss.item():.3f}", refresh=False
+            f"Accuracy: {acc.item():.4f} Loss: {loss.item():.4f}", refresh=False
         )
         return loss
 
