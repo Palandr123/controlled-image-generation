@@ -33,7 +33,7 @@ class TripletLoss(nn.Module):
             num_transform = i // num
             idx_pos = random.choice([idx for idx in range(num_transform * num, (num_transform + 1) * num) if idx != i])
             idx_neg = random.choice([idx for idx in range(batch_size) if idx // num != num_transform])
-            loss += nn.TripletMarginLoss(features[i], features[idx_pos], features[idx_neg])
+            loss += self.triplet_loss(features[i], features[idx_pos], features[idx_neg])
             with torch.no_grad():
                 correct += torch.cdist(features[i], features[idx_pos]) < torch.cdist(features[i], features[idx_neg])
         return correct / batch_size, loss / batch_size
