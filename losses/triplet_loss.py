@@ -36,5 +36,5 @@ class TripletLoss(nn.Module):
             loss += self.triplet_loss(features[i], features[idx_pos], features[idx_neg])
             with torch.no_grad():
                 correct += ((features[i] - features[idx_pos])**self.p).sum(axis=0).sqrt() < \
-                           ((features[i] - features[idx_pos])**self.p).sum(axis=0).sqrt()
+                           ((features[i] - features[idx_neg])**self.p).sum(axis=0).sqrt()
         return correct / batch_size, loss / batch_size
